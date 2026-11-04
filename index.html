@@ -1,960 +1,214 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="az">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Yayın Simülatörü</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Səsvermə Sinfi</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
-  :root {
-    --bg-desk: #14121b;
-    --bg-panel: #1c1927;
-    --bg-panel-2: #221e30;
-    --bg-input: #2a2438;
-    --border: #35304a;
-    --text: #eeeaf7;
-    --text-dim: #9c93b5;
-    --accent: #b06bff;
-    --accent-2: #4fd6c4;
-    --live-red: #ff4658;
-    --toxic: #ff6b6b;
-    --support: #4fd6c4;
-    --mod-gold: #ffc857;
-    --sub-blue: #6bb3ff;
-    --font-display: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    --font-body: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  }
-  :root:not([data-theme="light"]) { color-scheme: dark; }
-  @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) {
-      --bg-desk: #e9e6f2;
-      --bg-panel: #ffffff;
-      --bg-panel-2: #f3f1fa;
-      --bg-input: #ece9f6;
-      --border: #d8d3ea;
-      --text: #221e30;
-      --text-dim: #6b6483;
-    }
-  }
-  :root[data-theme="light"] {
-    --bg-desk: #e9e6f2;
-    --bg-panel: #ffffff;
-    --bg-panel-2: #f3f1fa;
-    --bg-input: #ece9f6;
-    --border: #d8d3ea;
-    --text: #221e30;
-    --text-dim: #6b6483;
-  }
-
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--bg-desk);
-    color: var(--text);
-    font-family: var(--font-body);
-    min-height: 100vh;
-  }
-
-  /* ---------- Sahte masaüstü ---------- */
-  .desktop {
-    height: 100vh;
-    overflow: hidden;
-    background:
-      radial-gradient(circle at 15% 10%, rgba(176,107,255,0.16), transparent 45%),
-      radial-gradient(circle at 85% 85%, rgba(79,214,196,0.12), transparent 45%),
-      var(--bg-desk);
-    display: flex;
-    flex-direction: column;
-  }
-
-  .taskbar {
-    height: 40px;
-    background: var(--bg-panel);
-    border-top: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 0 16px;
-    order: 3;
-    flex-shrink: 0;
-  }
-  .taskbar .tb-logo { font-size: 14px; font-weight: 600; color: var(--accent); }
-  .taskbar .tb-app {
-    font-size: 12px; color: var(--text-dim); background: var(--bg-input);
-    padding: 4px 10px; border-radius: 6px;
-  }
-  .taskbar .tb-clock { margin-left: auto; font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
-
-  .browser-chrome {
-    background: var(--bg-panel);
-    border-bottom: 1px solid var(--border);
-    padding: 8px 14px 0 14px;
-    flex-shrink: 0;
-  }
-  .browser-tabs { display: flex; gap: 6px; }
-  .browser-tab {
-    font-size: 12px; color: var(--text-dim); background: var(--bg-panel-2);
-    padding: 7px 14px 6px; border-radius: 8px 8px 0 0; border: 1px solid var(--border); border-bottom: none;
-    display: flex; align-items: center; gap: 6px; max-width: 200px; overflow: hidden; white-space: nowrap;
-  }
-  .browser-tab.active { background: var(--bg-desk); color: var(--text); }
-  .browser-bar {
-    background: var(--bg-desk); border: 1px solid var(--border); border-radius: 8px;
-    padding: 6px 12px; margin: 8px 0; font-size: 12px; color: var(--text-dim);
-    display: flex; align-items: center; gap: 8px;
-  }
-  .browser-bar .dot { width: 7px; height: 7px; border-radius: 50%; }
-  .dot-r { background: #ff5f57; } .dot-y { background: #febc2e; } .dot-g { background: #28c840; }
-
-  /* ---------- Yayın alanı ---------- */
-  .stream-wrap {
-    flex: 1;
-    display: flex;
-    gap: 14px;
-    padding: 14px;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .stream-main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    min-height: 0;
-  }
-
-  .stream-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 4px 12px;
-    flex-wrap: wrap;
-  }
-  .streamer-avatar {
-    width: 40px; height: 40px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    flex-shrink: 0;
-  }
-  .stream-titles { min-width: 0; flex: 1; }
-  .stream-title-input, .streamer-name-input {
-    background: transparent; border: none; color: var(--text);
-    font-family: inherit; padding: 2px 0; width: 100%;
-  }
-  .stream-title-input { font-size: 16px; font-weight: 600; }
-  .streamer-name-input { font-size: 12px; color: var(--accent-2); }
-  .stream-title-input:focus, .streamer-name-input:focus { outline: 1px dashed var(--border); }
-
-  .live-badge {
-    background: var(--live-red); color: white; font-size: 11px; font-weight: 700;
-    padding: 3px 8px; border-radius: 4px; display: flex; align-items: center; gap: 5px;
-    letter-spacing: 0.02em;
-  }
-  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: white; animation: pulse 1.4s infinite; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
-
-  .viewer-count { font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 5px; }
-
-  .video-frame {
-    position: relative;
-    flex: 1;
-    min-height: 0;
-    border-radius: 12px;
-    overflow: hidden;
-    background: #0c0a13;
-    border: 1px solid var(--border);
-  }
-  .video-frame video {
-    width: 100%; height: 100%; object-fit: cover; display: block;
-  }
-  .video-placeholder {
-    position: absolute; inset: 0;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 14px;
-    background:
-      radial-gradient(circle at 50% 35%, rgba(176,107,255,0.22), transparent 55%),
-      #100d18;
-  }
-  .video-placeholder .glow-ring {
-    width: 96px; height: 96px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    display: flex; align-items: center; justify-content: center;
-    font-size: 34px;
-    box-shadow: 0 0 40px rgba(176,107,255,0.45);
-  }
-  .cam-btn {
-    background: var(--accent); color: white; border: none; border-radius: 8px;
-    padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer;
-    font-family: inherit;
-  }
-  .cam-btn:hover { filter: brightness(1.08); }
-  .cam-hint { font-size: 11.5px; color: var(--text-dim); max-width: 240px; text-align: center; }
-
-  .webcam-overlay {
-    position: absolute; bottom: 14px; left: 14px;
-    width: 150px; height: 100px; border-radius: 10px; overflow: hidden;
-    border: 2px solid var(--accent);
-    box-shadow: 0 4px 18px rgba(0,0,0,0.4);
-    background: #100d18;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .webcam-overlay video { width: 100%; height: 100%; object-fit: cover; }
-  .webcam-overlay .cam-off-label { font-size: 10px; color: var(--text-dim); text-align: center; padding: 4px; }
-
-  /* ---------- Abone / Hediye bildirimi ---------- */
-  .alert-banner {
-    position: absolute;
-    top: 14px; left: 50%;
-    transform: translate(-50%, -140%);
-    min-width: 260px; max-width: 82%;
-    background: linear-gradient(135deg, rgba(176,107,255,0.95), rgba(79,214,196,0.95));
-    border-radius: 12px;
-    padding: 12px 18px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-    opacity: 0;
-    transition: transform 0.5s cubic-bezier(.2,.9,.3,1.3), opacity 0.4s;
-    z-index: 5;
-  }
-  .alert-banner.show { transform: translate(-50%, 0); opacity: 1; }
-  .alert-banner .alert-icon { font-size: 30px; flex-shrink: 0; }
-  .alert-banner .alert-text { color: white; min-width: 0; }
-  .alert-banner .alert-title { font-size: 13px; font-weight: 800; line-height: 1.3; }
-  .alert-banner .alert-msg { font-size: 12px; opacity: 0.92; margin-top: 2px; word-wrap: break-word; }
-
-  .overlay-topbar {
-    position: absolute; top: 12px; left: 12px; right: 12px;
-    display: flex; justify-content: space-between; align-items: flex-start;
-    pointer-events: none;
-  }
-  .overlay-chip {
-    background: rgba(20,18,27,0.72); backdrop-filter: blur(4px);
-    color: var(--text); font-size: 11px; padding: 5px 9px; border-radius: 6px;
-    border: 1px solid rgba(255,255,255,0.08);
-  }
-
-  /* ---------- Kontrol paneli ---------- */
-  .control-bar {
-    margin-top: 12px;
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 12px 14px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 18px;
-    align-items: center;
-  }
-  .ctrl-group { display: flex; flex-direction: column; gap: 4px; min-width: 130px; }
-  .ctrl-label { font-size: 10.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
-  .ctrl-row { display: flex; align-items: center; gap: 8px; }
-  input[type="range"] { accent-color: var(--accent); width: 120px; }
-  .speed-val { font-size: 12px; color: var(--accent-2); font-variant-numeric: tabular-nums; min-width: 60px; }
-
-  .toggle {
-    display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
-    font-size: 12.5px; color: var(--text); user-select: none;
-  }
-  .toggle input { display: none; }
-  .toggle .sw {
-    width: 34px; height: 19px; border-radius: 20px; background: var(--bg-input);
-    border: 1px solid var(--border); position: relative; transition: background 0.15s;
-    flex-shrink: 0;
-  }
-  .toggle .sw::after {
-    content: ''; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px;
-    border-radius: 50%; background: var(--text-dim); transition: transform 0.15s, background 0.15s;
-  }
-  .toggle input:checked + .sw { background: var(--accent); border-color: var(--accent); }
-  .toggle input:checked + .sw::after { transform: translateX(15px); background: white; }
-
-  /* ---------- Chat paneli ---------- */
-  .chat-panel {
-    width: 340px;
-    flex-shrink: 0;
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    overflow: hidden;
-  }
-  .chat-header {
-    padding: 11px 14px;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-    flex-shrink: 0;
-  }
-  .chat-header-title { font-size: 13px; font-weight: 600; }
-  .chat-header-sub { font-size: 10.5px; color: var(--text-dim); }
-
-  .chat-scroll {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    padding: 8px 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    font-size: 13px;
-    line-height: 1.4;
-  }
-  .chat-scroll::-webkit-scrollbar { width: 7px; }
-  .chat-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-  .msg { word-wrap: break-word; padding: 2px 4px; border-radius: 4px; transition: opacity 0.4s, background 0.3s; }
-  .msg .uname { font-weight: 700; margin-right: 5px; cursor: default; }
-  .badge {
-    display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 5px;
-    border-radius: 3px; margin-right: 4px; vertical-align: 1px; letter-spacing: 0.02em;
-  }
-  .badge-mod { background: var(--mod-gold); color: #3a2c00; }
-  .badge-vip { background: var(--accent); color: white; }
-  .badge-sub { background: var(--sub-blue); color: #041c33; }
-
-  .msg.type-toxic .uname { color: var(--toxic); }
-  .msg.type-support .uname { color: var(--support); }
-  .msg.type-normal .uname { color: var(--accent-2); }
-  .msg.type-mod .uname { color: var(--mod-gold); }
-
-  .msg.removed {
-    opacity: 0.5;
-    text-decoration: line-through;
-    color: var(--text-dim);
-    background: rgba(255,70,88,0.07);
-  }
-  .msg.removed .uname { text-decoration: line-through; }
-
-  .sys-msg {
-    font-size: 11.5px;
-    color: var(--mod-gold);
-    text-align: center;
-    padding: 4px 6px;
-    background: rgba(255,200,87,0.07);
-    border-radius: 5px;
-    margin: 3px 0;
-  }
-
-  .chat-footer {
-    border-top: 1px solid var(--border);
-    padding: 9px 10px;
-    flex-shrink: 0;
-  }
-  .chat-input-fake {
-    background: var(--bg-input); border: 1px solid var(--border); border-radius: 7px;
-    padding: 8px 10px; font-size: 12px; color: var(--text-dim);
-  }
-
-  /* ---------- Mobil ---------- */
-  @media (max-width: 860px) {
-    .desktop { height: auto; min-height: 100vh; overflow: visible; }
-    .stream-wrap { flex-direction: column; overflow: visible; }
-    .stream-main { min-height: auto; }
-    .chat-panel { width: 100%; height: 380px; min-height: 380px; }
-    .video-frame { min-height: 220px; }
-    .control-bar { gap: 12px; }
-    .ctrl-group { min-width: 45%; }
-  }
+:root{--p:#7c3aed;--p2:#ec4899;--o:#f59e0b;--g:#10b981;--b:#0ea5e9;--r:#ef4444;--ink:#1e1b4b}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Trebuchet MS",system-ui,sans-serif;color:var(--ink);min-height:100vh;
+background:linear-gradient(135deg,#fde68a,#fbcfe8 40%,#c4b5fd 75%,#a5f3fc);background-attachment:fixed}
+header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:14px 22px;
+background:linear-gradient(90deg,var(--p),var(--p2));color:#fff;box-shadow:0 4px 18px #7c3aed55}
+header h1{margin:0;font-size:22px}
+.badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:bold;color:#fff}
+.admin{background:var(--r)}.teacher{background:var(--b)}.student{background:var(--g)}
+.open{background:var(--o)}.started{background:var(--g)}.finished{background:#64748b}
+nav{display:flex;gap:8px;padding:12px 22px;flex-wrap:wrap}
+nav button{background:#fff;color:var(--p);border:2px solid var(--p)}
+nav button.on{background:var(--p);color:#fff}
+main{padding:0 22px 40px;max-width:1100px;margin:auto}
+.card{background:#ffffffee;border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 6px 20px #4c1d9522}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.img{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 14px #0002;border:3px solid transparent}
+.img.cur{border-color:var(--o);box-shadow:0 0 0 4px #f59e0b55}
+.img img{width:100%;height:170px;object-fit:cover;display:block;background:#ddd}
+.img .in{padding:10px;display:flex;flex-direction:column;gap:6px}
+button{font:inherit;font-weight:bold;border:0;border-radius:12px;padding:8px 14px;cursor:pointer;color:#fff;
+background:linear-gradient(90deg,var(--p),var(--p2));transition:transform .1s}
+button:hover{transform:scale(1.05)}
+button.g{background:linear-gradient(90deg,#10b981,#06b6d4)}
+button.o{background:linear-gradient(90deg,#f59e0b,#ef4444)}
+button.s{background:#e2e8f0;color:var(--ink)}
+button.sm{padding:4px 10px;font-size:13px}
+input,select{font:inherit;padding:9px 12px;border-radius:12px;border:2px solid #c4b5fd;background:#fff;max-width:100%}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.stars button{background:none;color:#cbd5e1;font-size:26px;padding:0 2px}
+.stars button.on{color:var(--o)}
+.big{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+.big img{max-width:100%;max-height:380px;border-radius:18px;box-shadow:0 8px 24px #0003}
+.muted{opacity:.7;font-size:14px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:12px 20px;border-radius:14px;color:#fff;
+background:var(--g);display:none;z-index:9;max-width:90vw}
+.auth{max-width:420px;margin:60px auto}
+h2,h3{margin:6px 0}
 </style>
 </head>
 <body>
-<div class="desktop">
-
-  <div class="browser-chrome">
-    <div class="browser-tabs">
-      <div class="browser-tab active">🟣 <span id="tabTitle">yayınım</span></div>
-      <div class="browser-tab">📊 istatistikler</div>
-      <div class="browser-tab">💬 mesajlar</div>
-    </div>
-    <div class="browser-bar">
-      <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
-      <span>stream.local/canli/<span id="urlName">kanal</span></span>
-    </div>
-  </div>
-
-  <div class="stream-wrap">
-    <div class="stream-main">
-      <div class="stream-info">
-        <div class="streamer-avatar"></div>
-        <div class="stream-titles">
-          <input class="stream-title-input" id="titleInput" value="bugün sakin bir yayın // sohbet açık" maxlength="60">
-          <input class="streamer-name-input" id="nameInput" value="kanalAdi" maxlength="24">
-        </div>
-        <div class="live-badge"><span class="live-dot"></span>CANLI</div>
-        <div class="viewer-count">👁️ <span id="viewerCount">0</span> izleyici</div>
-      </div>
-
-      <div class="video-frame" id="videoFrame">
-        <div class="overlay-topbar">
-          <div class="overlay-chip" id="uptimeChip">00:00:00</div>
-          <div class="overlay-chip">1080p60</div>
-        </div>
-        <div class="video-placeholder" id="camPlaceholder">
-          <div class="glow-ring">🎮</div>
-          <button class="cam-btn" id="camBtn">Kamerayı Aç</button>
-          <div class="cam-hint">Gerçek webcam görüntünü eklemek için izin ver, yoksa masaüstü/oyun ekranı gibi görünmeye devam eder.</div>
-        </div>
-        <video id="camVideo" autoplay playsinline muted style="display:none;"></video>
-        <div class="webcam-overlay" id="pipBox" style="display:none;">
-          <div class="cam-off-label">webcam</div>
-        </div>
-        <div class="alert-banner" id="alertBanner">
-          <div class="alert-icon" id="alertIcon">🎁</div>
-          <div class="alert-text">
-            <div class="alert-title" id="alertTitle"></div>
-            <div class="alert-msg" id="alertMsg"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="control-bar">
-        <div class="ctrl-group">
-          <span class="ctrl-label">Chat hızı</span>
-          <div class="ctrl-row">
-            <input type="range" id="speedSlider" min="1" max="10" value="4">
-            <span class="speed-val" id="speedVal">orta</span>
-          </div>
-        </div>
-
-        <div class="ctrl-group">
-          <span class="ctrl-label">ModBot</span>
-          <label class="toggle">
-            <input type="checkbox" id="modToggle" checked><span class="sw"></span>
-            <span id="modLabel">aktif</span>
-          </label>
-        </div>
-
-        <div class="ctrl-group">
-          <span class="ctrl-label">Chat kavgaları</span>
-          <label class="toggle">
-            <input type="checkbox" id="fightToggle" checked><span class="sw"></span>
-            <span id="fightLabel">açık</span>
-          </label>
-        </div>
-
-        <div class="ctrl-group">
-          <span class="ctrl-label">Akış</span>
-          <label class="toggle">
-            <input type="checkbox" id="pauseToggle" checked><span class="sw"></span>
-            <span id="pauseLabel">akıyor</span>
-          </label>
-        </div>
-
-        <div class="ctrl-group">
-          <span class="ctrl-label">Hedef izleyici</span>
-          <div class="ctrl-row">
-            <input type="number" id="viewerTargetInput" min="10" max="200000" step="10" value="500"
-              style="width:90px; background:var(--bg-input); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 7px; font-family:inherit; font-size:12px;">
-          </div>
-        </div>
-
-        <div class="ctrl-group">
-          <span class="ctrl-label">Oynanan oyun</span>
-          <select id="gameSelect" style="background:var(--bg-input); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:6px 7px; font-family:inherit; font-size:12px;">
-            <option value="free">Serbest sohbet</option>
-            <option value="tlou1">The Last of Us</option>
-            <option value="tlou2">The Last of Us Part II</option>
-            <option value="minecraft">Minecraft</option>
-            <option value="re_requiem">Resident Evil Requiem</option>
-          </select>
-        </div>
-
-        <div class="ctrl-group">
-          <span class="ctrl-label">Abone / Hediye</span>
-          <label class="toggle">
-            <input type="checkbox" id="alertToggle" checked><span class="sw"></span>
-            <span id="alertLabel">açık</span>
-          </label>
-        </div>
-
-        <div class="ctrl-group">
-          <span class="ctrl-label">İnsan moderatör</span>
-          <div class="ctrl-row">
-            <input type="text" id="humanModInput" value="modKerem" maxlength="18"
-              style="width:100px; background:var(--bg-input); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 7px; font-family:inherit; font-size:12px;">
-            <label class="toggle">
-              <input type="checkbox" id="humanModToggle" checked><span class="sw"></span>
-              <span id="humanModLabel">aktif</span>
-            </label>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="chat-panel">
-      <div class="chat-header">
-        <div>
-          <div class="chat-header-title">Sohbet</div>
-          <div class="chat-header-sub"><span id="chatterCount">0</span> kişi yazıyor</div>
-        </div>
-        <div class="chat-header-sub">🛡️ ModBot <span id="modStatusDot">●</span></div>
-      </div>
-      <div class="chat-scroll" id="chatScroll"></div>
-      <div class="chat-footer">
-        <div class="chat-input-fake">Mesaj yazmak için yayıncı olman gerekmez, bu sadece simülasyon 🙂</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="taskbar">
-    <div class="tb-logo">◆ yayınMasası</div>
-    <div class="tb-app">🎥 Kamera</div>
-    <div class="tb-app">💬 Chat</div>
-    <div class="tb-app">🎵 Müzik</div>
-    <div class="tb-clock" id="clock">00:00</div>
-  </div>
-</div>
-
+<div id="app"></div>
+<div id="toast"></div>
 <script>
-(function () {
-  // ---------------- veri havuzları ----------------
-  const usernames = [
-    "golgekurdu42","pixelBaris","asyaOyunda","kaanTV","nilay_","efeGamerr",
-    "burcuoyunda","deniz.exe","tolgahan99","seldaLive","emreVerse","yagmurLan",
-    "kubilay_k","aslıBirTık","mertcanTv","ipekOyunda","sinancocuk","zeynepp_",
-    "orhanBey34","cansuLan","batuhan.gg","melisaOyunda","firatKral","dilaraTV",
-    "yusufAbi","ecemcik","ogulcanTV","beritan_","serkanOyunda","irem.gg"
-  ];
-  const usedNames = new Set();
-  function pickUsername() {
-    const n = usernames[Math.floor(Math.random() * usernames.length)];
-    usedNames.add(n);
-    return n;
-  }
-  function pickFrom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+const SUPABASE_URL='https://acorghpgfcqhltnzjepg.supabase.co';
+const SUPABASE_KEY='sb_publishable_DT6DrSQR-mDsfM_UzadNVQ_BhvY33JM';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+const $=s=>document.querySelector(s), app=$('#app');
+const ROLE={admin:'Admin',teacher:'Müəllim',student:'Şagird'};
+const ST={open:'Yükləmə açıq',started:'Başlayıb',finished:'Bitib'};
+let token=null,profile=null,tab='',ctx={},authMode='login',last='';
+try{token=localStorage.getItem('tok')}catch(e){}
 
-  const normalMessages = [
-    "selamlar herkese","yeni geldim, ne oynuyoruz","bugün form yerinde",
-    "müzik çok iyiymiş bu arada","kanka bu bölümü nasıl geçtin",
-    "chat çok hızlı akıyor 😄","ilk defa denk geldim yayına","abicim bu ne şans ya",
-    "resmen 1v5 yaptın","biraz mola verelim mi","donanımın ne senin",
-    "sesini biraz aç","ekran kartı ne kullanıyosun","bugün erken bitecek mi yayın",
-    "hocam link ne demiştin","yarın da yayın var mı","stream kalitesi süper",
-    "bu harita çok zor geçiliyor","günaydın demek istedim aslında iyi akşamlar oldu 😅",
-    "az önce ne oldu öyle","kahve molası şart","bugün hava nasıl orda",
-    "chat sakin bugün","yeni intro çok güzel olmuş","overlay yenilenmiş galiba",
-    "bugün kaç saat yayın var","son bölümü kaçırdım neler oldu",
-    "+ 1 abone hedefine yaklaşıldı galiba","emote'lar çok komik",
-    "bunu nasıl yaptın anlamadım","tekrar dene bence","pes etme kanka",
-    "harbiden zor bir seviyeymiş"
-  ];
+const h=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const q=async p=>{const{data,error}=await p;if(error)throw error;return data};
+const rpc=(fn,a={})=>q(sb.rpc(fn,{p_token:token,...a}));
+const run=async f=>{try{await f()}catch(e){const m=e.message||String(e);if(/Sessiya bitib/.test(m))logout();toast(m,1)}};
+const url=p=>sb.storage.from('images').getPublicUrl(p).data.publicUrl;
+function toast(m,err){const t=$('#toast');t.textContent=m;t.style.background=err?'#ef4444':'#10b981';t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3500)}
+const stars=(n,fn,dis)=>`<span class="stars">${[1,2,3,4,5].map(i=>`<button ${dis?'disabled':''} class="${i<=n?'on':''}" onclick="${fn}(${i})">★</button>`).join('')}</span>`;
+const badge=(c,t)=>`<span class="badge ${c}">${t}</span>`;
 
-  const supportMessages = [
-    "boşver kanka o hep böyle yazıyor","herkes sakin olsun ya",
-    "gereksiz kavga çıkarmaya gerek yok","yayıncı hiçbir şey yapmadı sakin ol",
-    "sürekli trollüyor bu zaten, mod bakar","rapor et geç kanka",
-    "biraz saygı olsun burada","herkes eğlenmeye geldi kavga etmeyelim",
-    "bırakın adamı yayın yapsın","bu kadar da olmaz ama",
-    "moderasyon zaten bakıyor, boşver","chatte gerginlik olmasın lütfen"
-  ];
+/* ---------- GİRİŞ ---------- */
+function authHTML(){const reg=authMode==='reg';return`<div class="auth card"><h2>🎓 Səsvermə Sinfi</h2>
+<p class="muted">${reg?'Yeni şagird hesabı yarat':'Hesabına daxil ol'}</p>
+<div style="display:grid;gap:10px">
+<input id="em" placeholder="İstifadəçi adı" maxlength="30" autocomplete="username"><input id="pw" type="password" placeholder="Şifrə" autocomplete="current-password">
+<button onclick="doAuth()">${reg?'Qeydiyyat':'Daxil ol'}</button>
+<button class="s" onclick="authMode='${reg?'login':'reg'}';render()">${reg?'Hesabım var':'Qeydiyyatdan keç'}</button></div></div>`}
+window.doAuth=()=>run(async()=>{
+ const n=$('#em').value.trim(),p=$('#pw').value;
+ if(!n)throw new Error('İstifadəçi adı yazın');
+ const d=await q(sb.rpc(authMode==='reg'?'app_register':'app_login',{p_username:n,p_password:p}));
+ token=d.token;try{localStorage.setItem('tok',token)}catch(e){}
+ profile={id:d.id,name:d.name,role:d.role};tab='';ctx={};render();
+});
+window.logout=()=>{if(token)sb.rpc('app_logout',{p_token:token});token=null;profile=null;try{localStorage.removeItem('tok')}catch(e){}render()};
 
-  // Hafif "toksik" örnekler: kaba/asabi ama hakaret/nefret söylemi içermeyen, simülasyon amaçlı ifadeler.
-  const toxicMessages = [
-    "yayın resmen sıkıcı olmuş","bu oyunu hiç bilmiyorsun ya",
-    "of yeter artık aynı şey","kanka sesini kısar mısın",
-    "berbat oynuyorsun bugün","trollemeyi bırak biraz",
-    "chatı okumuyor zaten boşuna yazıyoruz","bu kadar da abartmayın şovu",
-    "sıkıldım resmen kapatıyorum","hep aynı laflar dönüyor",
-    "dinlemiyor ki kimseyi","yeter be aynı konu"
-  ];
+/* ---------- ÇƏRÇİVƏ ---------- */
+function tabs(){const r=profile.role;
+ if(r==='student')return[['images','🖼️ Şəkillərim'],['vote','⭐ Səsvermə']];
+ if(r==='teacher')return[['slides','🎞️ Slaydlar']];
+ return[['slides','🎞️ Slaydlar'],['users','👥 İstifadəçilər'],['images','🖼️ Şəkillərim']]}
+window.go=t=>{tab=t;ctx={};render()};
+const views={};
+async function render(force=true){
+ let html;
+ if(!profile)html=authHTML();
+ else{
+  if(!tab||!tabs().some(t=>t[0]===tab))tab=tabs()[0][0];
+  let inner;try{inner=await views[tab]()}catch(e){if(!force)return;inner=`<div class="card">⚠️ ${h(e.message)}</div>`;if(/Sessiya bitib/.test(e.message))return logout()}
+  html=`<header><h1>🎓 Səsvermə Sinfi</h1><div class="row"><b>${h(profile.name)}</b>${badge(profile.role,ROLE[profile.role])}<button class="s sm" onclick="logout()">Çıxış</button></div></header>
+  <nav>${tabs().map(t=>`<button class="${t[0]===tab?'on':''}" onclick="go('${t[0]}')">${t[1]}</button>`).join('')}</nav><main>${inner}</main>`;
+ }
+ if(!force&&html===last)return;
+ app.innerHTML=html;last=html;
+}
+setInterval(()=>{if(profile&&!document.activeElement?.matches('input,select')&&!$('#f')?.files.length&&!$('#t')?.value)render(false)},3000);
 
-  const modReplies = [
-    "kurallara uyalım lütfen 🙏","tekrarı halinde susturma uygulanır",
-    "chat kurallarını hatırlatıyorum, saygılı olalım","bu tarz mesajlara izin verilmiyor",
-    "sakin bir sohbet ortamı istiyoruz"
-  ];
+/* ---------- ŞƏKİLLƏRİM ---------- */
+views.images=async()=>{
+ const list=await rpc('my_images'),open=await rpc('open_slides');
+ return`<div class="card"><h3>📤 Yeni şəkil yüklə</h3><div class="row">
+ <input type="file" id="f" accept="image/*"><input id="t" placeholder="Şəkilin adı"><button class="g" onclick="upload()">Yüklə</button></div></div>
+ <h3>Mənim şəkillərim (${list.length})</h3>
+ ${list.length?'':'<div class="card muted">Hələ şəkil yoxdur. Yuxarıdan yüklə!</div>'}
+ <div class="grid">${list.map(i=>{const locked=i.slide_id&&i.slide_status!=='open';return`<div class="img"><img src="${url(i.path)}"><div class="in">
+ <b>${h(i.title)}</b>
+ ${i.slide_id?`<span class="muted">Slayd: ${h(i.slide_title)} ${badge(i.slide_status,ST[i.slide_status])}</span>`:'<span class="muted">Slayda atanmayıb</span>'}
+ ${locked?'<span class="muted">🔒 Slayd başlayıb</span>':`<select onchange="assign('${i.id}',this.value)"><option value="">— Slayd seç —</option>
+  ${open.map(s=>`<option value="${s.id}" ${s.id===i.slide_id?'selected':''}>${h(s.title)} (${s.cnt}/${s.max_images})</option>`).join('')}</select>`}
+ <div class="row"><button class="sm" onclick="rename('${i.id}','${h(i.title).replace(/'/g,'')}')">✏️ Ad</button>
+ ${locked&&profile.role!=='admin'?'':`<button class="sm o" onclick="delImg('${i.id}')">🗑️ Sil</button>`}</div></div></div>`}).join('')}</div>`};
+window.upload=()=>run(async()=>{
+ const f=$('#f').files[0],title=$('#t').value.trim();
+ if(!f)throw new Error('Şəkil seçin');if(!title)throw new Error('Şəkilə ad verin');
+ if(f.size>5*1024*1024)throw new Error('Şəkil 5MB-dan böyük olmasın');
+ const path=`${profile.id}/${Date.now()}_${f.name.replace(/[^\w.]/g,'_')}`;
+ await q(sb.storage.from('images').upload(path,f));
+ await rpc('add_image',{p_title:title,p_path:path});
+ toast('Şəkil yükləndi ✅');render();
+});
+window.assign=(id,sid)=>run(async()=>{await rpc('assign_image',{p_id:id,p_slide:sid||null});toast('Yeniləndi ✅');render()});
+window.rename=(id,old)=>run(async()=>{const t=prompt('Yeni ad:',old);if(!t)return;await rpc('rename_image',{p_id:id,p_title:t});render()});
+window.delImg=id=>run(async()=>{if(!confirm('Silinsin?'))return;await rpc('delete_image',{p_id:id});render()});
 
-  // İnsan moderatörün, yayıncıya yönelik kendi cümleleriyle attığı mesajlar
-  const humanModChatLines = [
-    "hocam ben hallettim, dert etme","birazcık önce spam yapan birini attım dışarı",
-    "chat şu an sakin, her şey kontrol altında","merak etme ben bakıyorum sohbete",
-    "yayın kalitesi süper bu arada 👍","az önce bir kullanıcıyı uyardım, tekrarlarsa atarım",
-    "sen oyuna odaklan, chat'i ben toparlarım","mic'te ufak bir cızırtı var galiba, bakar mısın",
-    "yeni gelenlere kuralları hatırlattım","güzel gidiyor yayın, devam",
-    "biraz önce iki kişi tartışıyordu, ayırdım aralarını","emin ol chat gözümün önünde"
-  ];
-  const humanModActionLines = [
-    "spam attığı için birini 5 dk susturdum",
-    "kurallara uymayan bir mesajı sildim",
-    "tartışmayı büyümeden kestim",
-    "reklam linki atan birini banladım",
-    "tekrarcı bir kullanıcıyı zaman aşımına aldım"
-  ];
+/* ---------- SƏSVERMƏ (şagird) ---------- */
+views.vote=async()=>{
+ if(ctx.v)return voteDetail();
+ const list=await rpc('started_slides');
+ return`<h3>Aktiv slaydlar</h3>${list.length?'':'<div class="card muted">İndi səsvermə gedən slayd yoxdur.</div>'}
+ <div class="grid">${list.map(s=>`<div class="card"><b>🎞️ ${h(s.title)}</b><br>${s.teacher_present?badge('teacher','Müəllim slaydda'):badge('started','Hamısına baxa bilərsən')}<br><br><button onclick="ctx.v='${s.id}';render()">Aç</button></div>`).join('')}</div>`};
+async function voteDetail(){
+ const d=await rpc('slide_student',{p_id:ctx.v}),s=d.slide,open=s.status==='started';
+ return`<div class="row"><button class="s" onclick="ctx.v=null;render()">← Geri</button><h2>🎞️ ${h(s.title)}</h2></div>
+ ${!open?'<div class="card">Bu slaydda səsvermə bitib.</div>':''}
+ ${s.teacher_present?'<div class="card">👩‍🏫 Müəllim slayddadır — yalnız cari şəkilə səs verə bilərsən.</div>':''}
+ <div class="grid">${d.images.map(i=>`<div class="img ${i.id===s.current_image_id?'cur':''}"><img src="${url(i.path)}"><div class="in">
+ <b>${h(i.title)}</b>${i.own?'<span class="muted">Bu sənin şəklindir</span>':stars(i.my||0,`vote.bind(0,'${i.id}')`,!open)}</div></div>`).join('')}</div>`}
+window.vote=(id,score)=>run(async()=>{await rpc('cast_vote',{p_image:id,p_score:score});toast('Səs verildi ⭐');render()});
 
-  // Oyuna özel sohbet mesajları
-  const gameMessages = {
-    tlou1: [
-      "joel resmen efsane karakter","ellie o sahnede ağlattı beni",
-      "clicker sesi gelince kalbim durdu","tess'in sonu hala içimi acıtıyor",
-      "bu bölüm çok gerdi valla","sneak yapmadan geçmeyi dene",
-      "ampulle etrafı aydınlatınca daha rahat görünüyor","atmosfer konusunda çok iyi bu oyun",
-      "kızgınlardan biri arkandan geliyor dikkat","bu sahne oyunun en iyi anlarından biri"
-    ],
-    tlou2: [
-      "abby hattı tartışmalı ama iyi yazılmış","bu sahne psikolojik olarak yordu beni",
-      "müzik aleti sahnesi çok güzeldi","köpekli düşmanlar oyunu zorlaştırıyor",
-      "hikaye çok karanlık ilerliyor","flashback sahneleri çok etkileyici",
-      "bu bölümde stealth şart resmen","savaş sahnesi sinema gibiydi"
-    ],
-    minecraft: [
-      "diamond bulman lazım hızlıca","creeper arkandan geliyor dikkat",
-      "nether'a geçmek için portal lazım","redstone mekanizması harika olmuş",
-      "ev inşaatı çok güzel olmuş","enderman'a bakma sakın",
-      "iron farm kurmak uzun sürer ama değer","village bulunca trade yapabilirsin",
-      "gece mob'lar çoğalıyor dikkat et","bu build'i nasıl bu kadar hızlı yaptın"
-    ],
-    re_requiem: [
-      "atmosfer resmen korkunç olmuş","bu canavar tasarımı çok başarılı",
-      "envanter yönetimi yine zorlayıcı","boss savaşı nefes kesti",
-      "bu oyun gerilimi hiç düşürmüyor","saklanma mekaniği güzel eklenmiş",
-      "flashlight pili bitmesin inşallah","bu seri hep aynı kaliteyi koruyor",
-      "o kapının arkasında bir şey var hissediyorum","ses tasarımı gerçekten ürkütücü"
-    ]
-  };
-  function currentGamePool() {
-    const g = document.getElementById('gameSelect').value;
-    return gameMessages[g] || null;
-  }
+/* ---------- SLAYDLAR (müəllim/admin) ---------- */
+views.slides=async()=>{
+ if(ctx.s)return slideDetail();
+ const list=await rpc('slides_list');
+ return`<div class="card"><h3>➕ Yeni slayd</h3><div class="row"><input id="st" placeholder="Slayd adı">
+ <label>Şəkil limiti: <input id="sm" type="number" min="1" value="10" style="width:80px"></label><button class="g" onclick="newSlide()">Yarat</button></div></div>
+ ${list.length?'':'<div class="card muted">Hələ slayd yoxdur.</div>'}
+ <div class="grid">${list.map(s=>`<div class="card"><b>🎞️ ${h(s.title)}</b><br>${badge(s.status,ST[s.status])}
+ <p>${s.cnt} / ${s.max_images} şəkil</p><div class="row"><button onclick="ctx.s='${s.id}';render()">İdarə et</button>
+ <button class="o sm" onclick="delSlide('${s.id}')">Sil</button></div></div>`).join('')}</div>`};
+window.newSlide=()=>run(async()=>{const title=$('#st').value.trim();if(!title)throw new Error('Slayd adı yazın');
+ await rpc('create_slide',{p_title:title,p_max:+$('#sm').value||10});render()});
+window.delSlide=id=>run(async()=>{if(!confirm('Slayd silinsin? Şəkillər slayddan ayrılacaq.'))return;await rpc('delete_slide',{p_id:id});render()});
 
-  // ---------------- DOM ----------------
-  const chatScroll = document.getElementById('chatScroll');
-  const speedSlider = document.getElementById('speedSlider');
-  const speedVal = document.getElementById('speedVal');
-  const modToggle = document.getElementById('modToggle');
-  const modLabel = document.getElementById('modLabel');
-  const fightToggle = document.getElementById('fightToggle');
-  const fightLabel = document.getElementById('fightLabel');
-  const pauseToggle = document.getElementById('pauseToggle');
-  const pauseLabel = document.getElementById('pauseLabel');
-  const modStatusDot = document.getElementById('modStatusDot');
-  const chatterCount = document.getElementById('chatterCount');
-  const viewerCountEl = document.getElementById('viewerCount');
-  const titleInput = document.getElementById('titleInput');
-  const nameInput = document.getElementById('nameInput');
-  const tabTitle = document.getElementById('tabTitle');
-  const urlName = document.getElementById('urlName');
-  const clockEl = document.getElementById('clock');
-  const uptimeChip = document.getElementById('uptimeChip');
+async function slideDetail(){
+ const d=await rpc('slide_staff',{p_id:ctx.s}),s=d.slide,imgs=d.images;
+ const avg=i=>i.scores.length?(i.scores.reduce((a,b)=>a+b.s,0)/i.scores.length).toFixed(1)+' ⭐ ('+i.scores.length+' səs)':'səs yoxdur';
+ const who=i=>i.scores.length?`<details><summary>Kim səs verdi</summary><small>${i.scores.map(x=>h(x.n)+' — '+x.s+'★').join('<br>')}</small></details>`:'';
+ ctx.imgs=imgs;ctx.slide=s;
+ const cur=imgs.find(i=>i.id===s.current_image_id);
+ return`<div class="row"><button class="s" onclick="ctx.s=null;render()">← Geri</button><h2>🎞️ ${h(s.title)}</h2>${badge(s.status,ST[s.status])}</div>
+ <div class="card"><div class="row"><input id="et" value="${h(s.title)}"><label>Limit: <input id="em2" type="number" min="1" value="${s.max_images}" style="width:80px"></label>
+ <button class="sm" onclick="saveSlide()">💾 Saxla</button></div><br><div class="row">
+ ${s.status==='open'?`<button class="g" onclick="setStatus('started')">▶ Slaydı başlat</button>`:''}
+ ${s.status==='started'?`<button class="o" onclick="setStatus('finished')">⏹ Bitir</button>
+ <button class="${s.teacher_present?'o':'g'}" onclick="togglePresent()">${s.teacher_present?'👩‍🏫 Slayddan çıx (hamı baxa bilər)':'👩‍🏫 Slayda gir (yalnız cari şəkil)'}</button>`:''}
+ ${s.status==='finished'?`<button class="g" onclick="setStatus('started')">🔄 Yenidən başlat</button>`:''}</div>
+ ${s.status!=='open'?'<p class="muted">🔒 Slayd başlayıb: şəkillər silinə və dəyişdirilə bilməz, sıra və ad dəyişə bilər.</p>':''}</div>
+ ${s.status==='started'&&cur?`<div class="card big"><img src="${url(cur.path)}"><div><h2>${h(cur.title)}</h2>
+ <p>👤 <b>${h(cur.owner_name)}</b></p><p>${avg(cur)}</p>${who(cur)}
+ <div class="row"><button onclick="step(-1)">◀ Əvvəlki</button><button onclick="step(1)">Növbəti ▶</button></div></div></div>`:''}
+ <h3>Şəkillər (${imgs.length}/${s.max_images})</h3>${imgs.length?'':'<div class="card muted">Şagirdlər hələ şəkil atamayıb.</div>'}
+ <div class="grid">${imgs.map((i,k)=>`<div class="img ${i.id===s.current_image_id?'cur':''}"><img src="${url(i.path)}"><div class="in">
+ <b>${k+1}. ${h(i.title)}</b><span>👤 ${h(i.owner_name)}</span><span class="muted">${avg(i)}</span>${who(i)}
+ <div class="row"><button class="sm s" onclick="move('${i.id}',-1)">⬆</button><button class="sm s" onclick="move('${i.id}',1)">⬇</button>
+ ${s.status==='started'?`<button class="sm" onclick="setCur('${i.id}')">📍 Göstər</button>`:''}
+ ${s.status==='open'?`<button class="sm o" onclick="unassign('${i.id}')">Çıxar</button>`:''}</div></div></div>`).join('')}</div>`}
+const upS=p=>run(async()=>{await rpc('update_slide',{p_id:ctx.s,p_patch:p});render()});
+window.saveSlide=()=>upS({title:$('#et').value.trim(),max_images:+$('#em2').value||10});
+window.setStatus=st=>{
+ if(st==='started'&&!ctx.imgs.length)return toast('Əvvəlcə şəkil lazımdır',1);
+ upS({status:st,teacher_present:false,...(st==='started'&&!ctx.imgs.some(i=>i.id===ctx.slide.current_image_id)?{current_image_id:ctx.imgs[0].id}:{})})};
+window.togglePresent=()=>upS({teacher_present:!ctx.slide.teacher_present});
+window.setCur=id=>upS({current_image_id:id});
+window.step=d=>{const a=ctx.imgs;let k=a.findIndex(i=>i.id===ctx.slide.current_image_id);if(k<0)k=0;upS({current_image_id:a[(k+d+a.length)%a.length].id})};
+window.move=(id,d)=>run(async()=>{await rpc('move_image',{p_id:id,p_dir:d});render()});
+window.unassign=id=>run(async()=>{await rpc('assign_image',{p_id:id,p_slide:null});render()});
 
-  titleInput.addEventListener('input', () => { tabTitle.textContent = titleInput.value.slice(0, 22) || 'yayınım'; });
-  nameInput.addEventListener('input', () => { urlName.textContent = nameInput.value.replace(/\s+/g,'').toLowerCase() || 'kanal'; });
+/* ---------- İSTİFADƏÇİLƏR (admin) ---------- */
+views.users=async()=>{
+ const list=await rpc('users_list');
+ return`<h3>İstifadəçilər (${list.length})</h3><div class="card">${list.map(u=>`<div class="row" style="padding:6px 0;border-bottom:1px solid #eee">
+ <b style="flex:1;min-width:140px">${h(u.full_name)}</b>${badge(u.role,ROLE[u.role])}
+ <select onchange="setRole('${u.id}',this.value)">${Object.keys(ROLE).map(r=>`<option value="${r}" ${r===u.role?'selected':''}>${ROLE[r]}</option>`).join('')}</select>
+ <button class="sm s" onclick="setPass('${u.id}')">🔑 Şifrə</button></div>`).join('')}</div>`};
+window.setRole=(id,role)=>run(async()=>{await rpc('set_role',{p_user:id,p_role:role});toast('Rol dəyişdi ✅');render()});
+window.setPass=id=>run(async()=>{const p=prompt('Yeni şifrə:');if(!p)return;await rpc('admin_set_password',{p_user:id,p_pass:p});toast('Şifrə dəyişdi ✅')});
 
-  function speedLabel(v) {
-    if (v <= 2) return "yavaş";
-    if (v <= 4) return "sakin";
-    if (v <= 6) return "orta";
-    if (v <= 8) return "hızlı";
-    return "çılgın";
-  }
-  speedSlider.addEventListener('input', () => { speedVal.textContent = speedLabel(+speedSlider.value); });
-
-  modToggle.addEventListener('change', () => {
-    modLabel.textContent = modToggle.checked ? "aktif" : "kapalı";
-    modStatusDot.style.color = modToggle.checked ? "var(--accent-2)" : "var(--text-dim)";
-  });
-  fightToggle.addEventListener('change', () => { fightLabel.textContent = fightToggle.checked ? "açık" : "kapalı"; });
-  pauseToggle.addEventListener('change', () => { pauseLabel.textContent = pauseToggle.checked ? "akıyor" : "durduruldu"; });
-
-  let activeChatterCount = 6;
-  chatterCount.textContent = activeChatterCount;
-
-  function pinnedScrollFollow() {
-    const nearBottom = chatScroll.scrollHeight - chatScroll.scrollTop - chatScroll.clientHeight < 120;
-    return nearBottom;
-  }
-
-  function trimChat() {
-    while (chatScroll.children.length > 80) {
-      chatScroll.removeChild(chatScroll.firstChild);
-    }
-  }
-
-  function addSystemMessage(text) {
-    const shouldStick = pinnedScrollFollow();
-    const div = document.createElement('div');
-    div.className = 'sys-msg';
-    div.textContent = text;
-    chatScroll.appendChild(div);
-    trimChat();
-    if (shouldStick) chatScroll.scrollTop = chatScroll.scrollHeight;
-  }
-
-  function badgeFor(kind) {
-    if (kind === 'mod') return '<span class="badge badge-mod">MOD</span>';
-    if (kind === 'vip') return '<span class="badge badge-vip">VIP</span>';
-    if (kind === 'sub') return '<span class="badge badge-sub">ABONE</span>';
-    return '';
-  }
-
-  let msgCounter = 0;
-  function addChatMessage(username, text, type, opts) {
-    opts = opts || {};
-    const shouldStick = pinnedScrollFollow();
-    const id = 'm' + (++msgCounter);
-    const div = document.createElement('div');
-    div.className = 'msg type-' + type;
-    div.id = id;
-    const badgeHtml = opts.badge ? badgeFor(opts.badge) : '';
-    div.innerHTML = badgeHtml + '<span class="uname">' + username + ':</span><span class="txt"></span>';
-    div.querySelector('.txt').textContent = ' ' + text;
-    chatScroll.appendChild(div);
-    trimChat();
-    if (shouldStick) chatScroll.scrollTop = chatScroll.scrollHeight;
-    return id;
-  }
-
-  function markRemoved(id, reasonText) {
-    const el = document.getElementById(id);
-    if (!el || el.classList.contains('removed')) return;
-    el.classList.add('removed');
-    el.querySelector('.txt').textContent = ' [ModBot tarafından gizlendi]';
-    if (reasonText) addSystemMessage(reasonText);
-  }
-
-  // ---------------- ModBot mantığı ----------------
-  function maybeModerate(id, username) {
-    if (!modToggle.checked) return;
-    const delay = 1800 + Math.random() * 3200; // 1.8s - 5s
-    setTimeout(() => {
-      if (!modToggle.checked) return;
-      const banIt = Math.random() < 0.45;
-      const humanActive = document.getElementById('humanModToggle').checked;
-      const humanDoesIt = humanActive && Math.random() < 0.4;
-      const modName = humanDoesIt ? document.getElementById('humanModInput').value.trim() || 'modKerem' : 'ModBot';
-      if (banIt) {
-        markRemoved(id, (humanDoesIt ? '🔨 ' : '🔨 ') + username + ' 10 dakikalığına susturuldu (' + modName + ')');
-      } else {
-        markRemoved(id, '🧹 ' + username + ' kullanıcısının mesajı silindi — ' + modName + (humanDoesIt ? ' baktı' : ': ' + pickFrom(modReplies)));
-      }
-      if (humanDoesIt) {
-        setTimeout(() => {
-          addChatMessage(modName, pickFrom(humanModActionLines), 'mod', { badge: 'mod' });
-        }, 600 + Math.random() * 900);
-      }
-    }, delay);
-  }
-
-  // ---------------- Normal akış ----------------
-  function postRandomMessage() {
-    const roll = Math.random();
-    const username = pickUsername();
-    if (roll < 0.14 && fightToggle.checked) {
-      startFight();
-      return;
-    }
-    if (roll < 0.20) {
-      const id = addChatMessage(username, pickFrom(toxicMessages), 'toxic');
-      maybeModerate(id, username);
-    } else if (roll < 0.30) {
-      addChatMessage(username, pickFrom(supportMessages), 'support');
-    } else {
-      const badgeRoll = Math.random();
-      const badge = badgeRoll < 0.04 ? 'mod' : (badgeRoll < 0.12 ? 'vip' : (badgeRoll < 0.30 ? 'sub' : null));
-      const gamePool = currentGamePool();
-      const pool = (gamePool && Math.random() < 0.65) ? gamePool : normalMessages;
-      addChatMessage(username, pickFrom(pool), 'normal', { badge });
-    }
-  }
-
-  // ---------------- Chat kavgası simülasyonu ----------------
-  function startFight() {
-    const userA = pickUsername();
-    let userB = pickUsername();
-    let guard = 0;
-    while (userB === userA && guard < 5) { userB = pickUsername(); guard++; }
-
-    const openId = addChatMessage(userA, pickFrom(toxicMessages), 'toxic');
-
-    setTimeout(() => {
-      addChatMessage(userB, pickFrom(supportMessages), 'support');
-    }, 900 + Math.random() * 900);
-
-    setTimeout(() => {
-      const id2 = addChatMessage(userA, pickFrom(toxicMessages), 'toxic');
-      maybeModerate(id2, userA);
-      maybeModerate(openId, userA);
-    }, 2200 + Math.random() * 1200);
-
-    if (Math.random() < 0.5) {
-      setTimeout(() => {
-        addChatMessage(pickUsername(), pickFrom(supportMessages), 'support');
-      }, 3600 + Math.random() * 1000);
-    }
-
-    setTimeout(() => {
-      if (modToggle.checked) {
-        const humanActive = document.getElementById('humanModToggle').checked;
-        const useHuman = humanActive && Math.random() < 0.5;
-        const modName = useHuman ? (document.getElementById('humanModInput').value.trim() || 'modKerem') : 'ModBot';
-        const line = useHuman ? pickFrom(humanModChatLines) : pickFrom(modReplies);
-        addChatMessage(modName, line, 'mod', { badge: 'mod' });
-      }
-    }, 4800 + Math.random() * 1200);
-  }
-
-  // ---------------- Zamanlayıcı döngüsü ----------------
-  let loopTimer = null;
-  function scheduleNext() {
-    if (!pauseToggle.checked) {
-      loopTimer = setTimeout(scheduleNext, 500);
-      return;
-    }
-    const speed = +speedSlider.value; // 1 (yavaş) - 10 (çılgın)
-    const base = 2600 - speed * 210; // ms
-    const jitter = base * 0.6 * Math.random();
-    const delay = Math.max(220, base - jitter);
-    postRandomMessage();
-    loopTimer = setTimeout(scheduleNext, delay);
-  }
-  scheduleNext();
-
-  // izleyici sayısı: 0'dan başlayıp 1.5-2 dakika içinde hedefe yaklaşıyor, sonra hedef etrafında dalgalanıyor
-  const viewerTargetInput = document.getElementById('viewerTargetInput');
-  let viewers = 0;
-  viewerCountEl.textContent = '0';
-  const rampDurationMs = 90000 + Math.random() * 30000; // 90-120 sn
-  const rampStart = Date.now();
-
-  setInterval(() => {
-    const target = Math.max(10, parseInt(viewerTargetInput.value, 10) || 500);
-    const elapsed = Date.now() - rampStart;
-    if (elapsed < rampDurationMs) {
-      const progress = elapsed / rampDurationMs;
-      const eased = 1 - Math.pow(1 - progress, 2); // yavaş başlayıp hızlanan geliş
-      const noise = (Math.random() - 0.5) * target * 0.06;
-      viewers = Math.max(0, Math.round(target * eased + noise));
-    } else {
-      const band = Math.max(5, Math.round(target * 0.02));
-      viewers += Math.floor(Math.random() * (band * 2 + 1)) - band;
-      const lo = target - band, hi = target + band;
-      if (viewers < lo) viewers = lo;
-      if (viewers > hi) viewers = hi;
-      if (viewers < 0) viewers = 0;
-    }
-    viewerCountEl.textContent = viewers.toLocaleString('tr-TR');
-    activeChatterCount = Math.max(2, Math.round(viewers * (0.02 + Math.random() * 0.03)));
-    chatterCount.textContent = activeChatterCount;
-  }, 2000);
-
-  // saat + uptime
-  const startTime = Date.now();
-  function pad(n) { return String(n).padStart(2, '0'); }
-  function tick() {
-    const now = new Date();
-    clockEl.textContent = pad(now.getHours()) + ':' + pad(now.getMinutes());
-    const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    const h = Math.floor(elapsed / 3600), m = Math.floor((elapsed % 3600) / 60), s = elapsed % 60;
-    uptimeChip.textContent = pad(h) + ':' + pad(m) + ':' + pad(s);
-  }
-  tick();
-  setInterval(tick, 1000);
-
-  // açılışta birkaç mesaj
-  addSystemMessage('Sohbet simülasyonu başladı — hız ve moderasyonu kontrol panelinden ayarlayabilirsin.');
-  for (let i = 0; i < 4; i++) {
-    setTimeout(postRandomMessage, i * 500);
-  }
-
-  // ---------------- Abone / Hediye bildirimleri ----------------
-  const subCustomLines = [
-    "bu yayına abone olmak şerefti","harika içerikler için abone oldum",
-    "seni takip etmekten mutluyum","günün en güzel anı bu yayın",
-    "sonunda abone oldum, gecikti ama oldu","enerjin için abone oldum kanka"
-  ];
-  const giftItems = ["1 aylık abonelik","3 aylık abonelik","bir kutu emote paketi","VIP rozeti","yayın desteği"];
-  const giftCustomLines = [
-    "emeğine sağlık, devam et","bu içerik bu desteği hak ediyor",
-    "iyi ki varsın, izlemesi keyifli","topluluk için harika bir yayın bu",
-    "az önceki anı çok sevdim, işte bu","umarım daha çok kişiye ulaşırsın"
-  ];
-
-  const alertBanner = document.getElementById('alertBanner');
-  const alertIcon = document.getElementById('alertIcon');
-  const alertTitle = document.getElementById('alertTitle');
-  const alertMsg = document.getElementById('alertMsg');
-  const alertToggle = document.getElementById('alertToggle');
-  const alertLabel = document.getElementById('alertLabel');
-  alertToggle.addEventListener('change', () => { alertLabel.textContent = alertToggle.checked ? "açık" : "kapalı"; });
-
-  let alertBusy = false;
-  function showAlert(icon, title, msg) {
-    if (alertBusy) { setTimeout(() => showAlert(icon, title, msg), 1500); return; }
-    alertBusy = true;
-    alertIcon.textContent = icon;
-    alertTitle.textContent = title;
-    alertMsg.textContent = msg;
-    alertBanner.classList.add('show');
-    setTimeout(() => {
-      alertBanner.classList.remove('show');
-      setTimeout(() => { alertBusy = false; }, 500);
-    }, 5200);
-  }
-
-  function triggerSubOrGift() {
-    if (!alertToggle.checked) return;
-    const username = pickUsername();
-    if (Math.random() < 0.55) {
-      const months = Math.random() < 0.7 ? 1 : (1 + Math.floor(Math.random() * 11));
-      const line = pickFrom(subCustomLines);
-      showAlert('⭐', username + ' abone oldu! (' + months + '. ay)', '"' + line + '"');
-      addChatMessage(username, line, 'support', { badge: 'sub' });
-      addSystemMessage('⭐ ' + username + ' kanala abone oldu — ' + months + '. ay');
-    } else {
-      const item = pickFrom(giftItems);
-      const line = pickFrom(giftCustomLines);
-      showAlert('🎁', username + ' hediye gönderdi: ' + item, '"' + line + '"');
-      addChatMessage(username, line, 'support', { badge: 'vip' });
-      addSystemMessage('🎁 ' + username + ' bir hediye gönderdi: ' + item);
-    }
-  }
-
-  function scheduleAlertLoop() {
-    const delay = 9000 + Math.random() * 14000; // 9-23 sn
-    setTimeout(() => {
-      if (pauseToggle.checked) triggerSubOrGift();
-      scheduleAlertLoop();
-    }, delay);
-  }
-  scheduleAlertLoop();
-
-  function scheduleHumanModLoop() {
-    const delay = 14000 + Math.random() * 22000; // 14-36 sn
-    setTimeout(() => {
-      if (pauseToggle.checked && document.getElementById('humanModToggle').checked) {
-        const modName = document.getElementById('humanModInput').value.trim() || 'modKerem';
-        addChatMessage(modName, pickFrom(humanModChatLines), 'mod', { badge: 'mod' });
-      }
-      scheduleHumanModLoop();
-    }, delay);
-  }
-  scheduleHumanModLoop();
-
-  document.getElementById('humanModToggle').addEventListener('change', function () {
-    document.getElementById('humanModLabel').textContent = this.checked ? "aktif" : "kapalı";
-  });
-
-  // ---------------- Webcam ----------------
-  const camBtn = document.getElementById('camBtn');
-  const camPlaceholder = document.getElementById('camPlaceholder');
-  const camVideo = document.getElementById('camVideo');
-  const pipBox = document.getElementById('pipBox');
-
-  camBtn.addEventListener('click', async () => {
-    camBtn.textContent = 'İzin bekleniyor...';
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      camVideo.srcObject = stream;
-      camVideo.style.display = 'block';
-      camPlaceholder.style.display = 'none';
-      pipBox.style.display = 'none';
-    } catch (err) {
-      camBtn.textContent = 'Kamerayı Aç';
-      const hint = camPlaceholder.querySelector('.cam-hint');
-      hint.textContent = 'Kamera izni verilmedi. Tarayıcı ayarlarından izin verip tekrar deneyebilirsin — istersen bu ekran gibi görünmeye devam eder.';
-    }
-  });
+/* ---------- START ---------- */
+(async()=>{
+ if(token){try{profile=await rpc('app_me')}catch(e){token=null;try{localStorage.removeItem('tok')}catch(_){}}}
+ render();
 })();
 </script>
 </body>
