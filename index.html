@@ -38,7 +38,7 @@ input,select{font:inherit;padding:9px 12px;border-radius:12px;border:2px solid #
 .stars button{background:none;color:#cbd5e1;font-size:26px;padding:0 2px}
 .stars button.on{color:var(--o)}
 .big{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
-.big img{max-width:100%;max-height:380px;border-radius:18px;box-shadow:0 8px 24px #0003}
+.big img{max-width:100%;max-height:62vh;border-radius:18px;box-shadow:0 8px 24px #0003}
 .muted{opacity:.7;font-size:14px}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:12px 20px;border-radius:14px;color:#fff;
 background:var(--g);display:none;z-index:9;max-width:90vw}
@@ -141,12 +141,24 @@ async function classDetail(){
  <div class="grid">${d.images.map(i=>`<div class="img"><img src="${url(i.path)}" onclick="zoom(this.src)"><div class="in"><b>${h(i.title)}</b>
  <div class="row"><button class="sm" onclick="rename('${i.id}','${h(i.title).replace(/'/g,'')}')">✏️ Ad</button>
  ${open?`<button class="sm o" onclick="delImg('${i.id}')">🗑️ Sil</button>`:'<span class="muted">🔒</span>'}</div></div></div>`).join('')}</div>`}
+async function shrink(f){ // böyük şəkli avtomatik kiçildir (keyfiyyət qalır), ölçü limiti yoxdur
+ if(!f.type.startsWith('image/')||/gif|svg/.test(f.type)||f.size<1.5*1024*1024)return f;
+ try{
+  const bmp=await createImageBitmap(f),k=Math.min(1,2600/Math.max(bmp.width,bmp.height));
+  const c=document.createElement('canvas');c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);
+  c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
+  const bl=await new Promise(r=>c.toBlob(r,'image/jpeg',.88));
+  return bl&&bl.size<f.size?new File([bl],f.name.replace(/\.\w+$/,'')+'.jpg',{type:'image/jpeg'}):f;
+ }catch(e){return f}
+}
 window.upload=()=>run(async()=>{
- const f=$('#f').files[0],title=$('#t').value.trim();
- if(!f)throw new Error('Şəkil seçin');if(!title)throw new Error('Şəkilə ad verin');
- if(f.size>5*1024*1024)throw new Error('Şəkil 5MB-dan böyük olmasın');
+ const f0=$('#f').files[0],title=$('#t').value.trim();
+ if(!f0)throw new Error('Şəkil seçin');if(!title)throw new Error('Şəkilə ad verin');
+ toast('Yüklənir...');
+ const f=await shrink(f0);
  const path=`${profile.id}/${Date.now()}_${f.name.replace(/[^\w.]/g,'_')}`;
- await q(sb.storage.from('images').upload(path,f));
+ const{error}=await sb.storage.from('images').upload(path,f,{contentType:f.type||undefined});
+ if(error)throw new Error(/exceed|large|size/i.test(error.message)?'Fayl Supabase limitini aşır (Storage → Settings-dən artırın)':error.message);
  await rpc('add_image',{p_title:title,p_path:path,p_slide:ctx.c});
  toast('Şəkil yükləndi ✅');render();
 });
@@ -163,14 +175,15 @@ views.vote=async()=>{
  return`<h3>⭐ Aktiv slaydlar</h3>${list.length?'':'<div class="card muted">İndi səsvermə gedən slayd yoxdur.</div>'}
  <div class="grid">${list.map(s=>`<div class="card"><b>🎞️ ${h(s.title)}</b><br>${s.teacher_present?badge('teacher','Müəllim slaydda'):badge('started','Hamısına baxa bilərsən')}<br><br><button onclick="ctx.v='${s.id}';render()">Səs ver</button></div>`).join('')}</div>`};
 async function voteDetail(){
- const d=await rpc('slide_student',{p_id:ctx.v}),s=d.slide,open=s.status==='started',one=s.teacher_present;
+ const d=await rpc('slide_student',{p_id:ctx.v}),s=d.slide,open=s.status==='started',one=s.teacher_present,mx=s.max_votes,lock=!!mx&&s.used>=mx;
  return`<div class="row"><button class="s" onclick="ctx.v=null;render()">← Geri</button><h2>🎞️ ${h(s.title)}</h2></div>
  ${!open?'<div class="card">Bu slaydda səsvermə bitib.</div>':''}
+ ${mx?`<div class="card">🗳️ Səs hüququ: <b>${s.used} / ${mx}</b> şəkil${lock?'. Limit dolub: dəyişmək üçün başqa şəkildən səsi sil.':''}</div>`:''}
  ${one?'<div class="card">👩‍🏫 Müəllim slayddadır: yalnız cari şəkilə səs verə bilərsən.</div>':''}
  ${d.images.length?'':'<div class="card muted">Hələ göstəriləcək şəkil yoxdur.</div>'}
  <div class="${one?'vsingle':'vgrid'}">${d.images.map(i=>`<div class="vcard ${i.id===s.current_image_id?'cur':''}"><img src="${url(i.path)}" onclick="zoom(this.src)">
- <div class="vin"><h3>${h(i.title)}</h3>${i.own?'<span class="muted">Bu sənin şəklindir</span>':starsHTML(i.my||0,i.id,!open)}</div></div>`).join('')}</div>`}
-window.vote=(id,score)=>run(async()=>{await rpc('cast_vote',{p_image:id,p_score:score});toast('Səs verildi: '+score+' / 10 ⭐');render()});
+ <div class="vin"><h3>${h(i.title)}</h3>${i.own?'<span class="muted">Bu sənin şəklindir</span>':starsHTML(i.my||0,i.id,!open||(lock&&!i.my))}${i.my&&open?`<button class="sm s" onclick="vote('${i.id}',0)">✖ Səsi sil</button>`:''}</div></div>`).join('')}</div>`}
+window.vote=(id,score)=>run(async()=>{await rpc('cast_vote',{p_image:id,p_score:score});toast(score?'Səs verildi: '+score+' / 10 ⭐':'Səs silindi');render()});
 
 /* ---------- SLAYDLAR (müəllim/admin) ---------- */
 views.slides=async()=>{
@@ -191,26 +204,27 @@ async function slideDetail(){
  const avg=i=>i.scores.length?(i.scores.reduce((a,b)=>a+b.s,0)/i.scores.length).toFixed(1)+' / 10 ⭐ ('+i.scores.length+' səs)':'səs yoxdur';
  const who=i=>i.scores.length?`<details><summary>Kim səs verdi</summary><small>${i.scores.map(x=>h(x.n)+' — '+x.s+'★').join('<br>')}</small></details>`:'';
  ctx.imgs=imgs;ctx.slide=s;
- const cur=imgs.find(i=>i.id===s.current_image_id);
+ const cur=imgs.find(i=>i.id===s.current_image_id)||(s.status==='started'?imgs[0]:null),ci=imgs.indexOf(cur);
  return`<div class="row"><button class="s" onclick="ctx.s=null;render()">← Geri</button><h2>🎞️ ${h(s.title)}</h2>${badge(s.status,ST[s.status])}</div>
  <div class="card"><div class="row"><input id="et" value="${h(s.title)}"><label>Limit: <input id="em2" type="number" min="1" value="${s.max_images}" style="width:80px"></label>
+ <label>Hər şagird maks. neçə şəkilə səs versin: <input id="mv" type="number" min="0" value="${s.max_votes||''}" placeholder="limitsiz" style="width:100px"></label>
  <button class="sm" onclick="saveSlide()">💾 Saxla</button></div><br><div class="row">
  ${s.status==='open'?`<button class="g" onclick="setStatus('started')">▶ Slaydı başlat</button>`:''}
  ${s.status==='started'?`<button class="o" onclick="setStatus('finished')">⏹ Bitir</button>
  <button class="${s.teacher_present?'o':'g'}" onclick="togglePresent()">${s.teacher_present?'👩‍🏫 Slayddan çıx (hamı baxa bilər)':'👩‍🏫 Slayda gir (yalnız cari şəkil)'}</button>`:''}
  ${s.status==='finished'?`<button class="g" onclick="setStatus('started')">🔄 Yenidən başlat</button>`:''}</div>
  ${s.status!=='open'?'<p class="muted">🔒 Slayd başlayıb: şəkillər silinə və dəyişdirilə bilməz, sıra və ad dəyişə bilər.</p>':''}</div>
- ${s.status==='started'&&cur?`<div class="card big"><img src="${url(cur.path)}"><div><h2>${h(cur.title)}</h2>
+ ${s.status==='started'&&cur?`<div class="card big"><img src="${url(cur.path)}"><div><h2>${h(cur.title)}</h2><p class="muted">Şəkil ${ci+1} / ${imgs.length}</p>
  <p>👤 <b>${h(cur.owner_name)}</b></p><p>${avg(cur)}</p>${who(cur)}
  <div class="row"><button onclick="step(-1)">◀ Əvvəlki</button><button onclick="step(1)">Növbəti ▶</button></div></div></div>`:''}
- <h3>Şəkillər (${imgs.length}/${s.max_images})</h3>${imgs.length?'':'<div class="card muted">Şagirdlər hələ şəkil atamayıb.</div>'}
+ ${s.status==='started'?`<div class="card"><b>Slayd rejimi: şəkillər tək-tək göstərilir</b><div class="row" style="margin-top:8px">${imgs.map((i,k)=>`<button class="sm ${i.id===cur?.id?'':'s'}" onclick="setCur('${i.id}')">${k+1}</button>`).join('')}</div></div>`:`<h3>Şəkillər (${imgs.length}/${s.max_images})</h3>${imgs.length?'':'<div class="card muted">Şagirdlər hələ şəkil atamayıb.</div>'}
  <div class="grid">${imgs.map((i,k)=>`<div class="img ${i.id===s.current_image_id?'cur':''}"><img src="${url(i.path)}"><div class="in">
  <b>${k+1}. ${h(i.title)}</b><span>👤 ${h(i.owner_name)}</span><span class="muted">${avg(i)}</span>${who(i)}
  <div class="row"><button class="sm s" onclick="move('${i.id}',-1)">⬆</button><button class="sm s" onclick="move('${i.id}',1)">⬇</button>
  ${s.status==='started'?`<button class="sm" onclick="setCur('${i.id}')">📍 Göstər</button>`:''}
- ${s.status==='open'?`<button class="sm o" onclick="unassign('${i.id}')">Çıxar</button>`:''}</div></div></div>`).join('')}</div>`}
+ ${s.status==='open'?`<button class="sm o" onclick="unassign('${i.id}')">Çıxar</button>`:''}</div></div></div>`).join('')}</div>`}`}
 const upS=p=>run(async()=>{await rpc('update_slide',{p_id:ctx.s,p_patch:p});render()});
-window.saveSlide=()=>upS({title:$('#et').value.trim(),max_images:+$('#em2').value||10});
+window.saveSlide=()=>upS({title:$('#et').value.trim(),max_images:+$('#em2').value||10,max_votes:+$('#mv').value||0});
 window.setStatus=st=>{
  if(st==='started'&&!ctx.imgs.length)return toast('Əvvəlcə şəkil lazımdır',1);
  upS({status:st,teacher_present:false,...(st==='started'&&!ctx.imgs.some(i=>i.id===ctx.slide.current_image_id)?{current_image_id:ctx.imgs[0].id}:{})})};
